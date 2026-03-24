@@ -22,3 +22,9 @@ class TaskListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save()   # 👈 no user assignment
+        class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
+          serializer_class = TaskSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Task.objects.filter(user=self.request.user)
