@@ -1,21 +1,26 @@
-from pathlib import Path
 import os
+from pathlib import Path
+import dj_database_url
 
+# ==============================
+# BASE DIR
+# ==============================
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+# ==============================
 # SECURITY
-SECRET_KEY = 'django-insecure-key'
+# ==============================
+SECRET_KEY = os.environ.get('SECRET_KEY', 'unsafe-secret-key')
 
-# Automatically handle debug for local vs production
-DEBUG = not os.environ.get("RENDER")
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = [
-    'task-manager-j13m.onrender.com',
-    'localhost',
-    '127.0.0.1'
-]
+ALLOWED_HOSTS = ['*']
 
+
+# ==============================
 # APPLICATIONS
+# ==============================
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -24,26 +29,39 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Third-party
     'rest_framework',
-    'tasks',
     'drf_yasg',
+
+    # Local apps
+    'tasks',
 ]
 
+
+# ==============================
 # MIDDLEWARE
+# ==============================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # for static files on Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
+# ==============================
+# URL CONFIG
+# ==============================
 ROOT_URLCONF = 'taskmanager.urls'
 
+
+# ==============================
 # TEMPLATES
+# ==============================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -60,52 +78,82 @@ TEMPLATES = [
     },
 ]
 
+
+# ==============================
+# WSGI
+# ==============================
 WSGI_APPLICATION = 'taskmanager.wsgi.application'
 
-# DATABASE (ENV-SPECIFIC)
-if os.environ.get('RENDER'):
-    # Render (Linux environment)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': '/tmp/db.sqlite3',
-        }
-    }
-else:
-    # Local (Windows)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
 
-# REST FRAMEWORK
+# ==============================
+# DATABASE (🔥 THIS FIXES YOUR ERROR)
+# ==============================
+DATABASES = {
+    'default': dj_database_url.config(
+        default='sqlite:///db.sqlite3',
+        conn_max_age=600
+    )
+}
+
+
+# ==============================
+# PASSWORD VALIDATION
+# ==============================
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+
+# ==============================
+# INTERNATIONALIZATION
+# ==============================
+LANGUAGE_CODE = 'en-us'
+
+TIME_ZONE = 'UTC'
+
+USE_I18N = True
+USE_TZ = True
+
+
+# ==============================
+# STATIC FILES (Render fix)
+# ==============================
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+
+# ==============================
+# DEFAULT PRIMARY KEY
+# ==============================
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# ==============================
+# DRF CONFIG
+# ==============================
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
 
+
+# ==============================
 # SWAGGER SETTINGS
+# ==============================
 SWAGGER_SETTINGS = {
     'USE_SESSION_AUTH': False,
-    'SECURITY_DEFINITIONS': {
-        'Bearer': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header',
-        }
-    },
-    'SECURITY_REQUIREMENTS': [
-        {
-            'Bearer': []
-        }
-    ],
+    'JSON_EDITOR': True,
 }
 
-# STATIC FILES (REQUIRED FOR RENDER)
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# ==============================
+# SECURITY (Render HTTPS)
+# ==============================
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
