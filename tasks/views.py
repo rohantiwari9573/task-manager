@@ -13,7 +13,7 @@ from .serializers import TaskSerializer, RegisterSerializer
 
 
 # =========================
-# USER REGISTRATION API (AUTO LOGIN)
+# USER REGISTRATION (AUTO LOGIN)
 # =========================
 @swagger_auto_schema(
     method='post',
@@ -29,26 +29,20 @@ def register_user(request):
             password = serializer.validated_data['password']
 
             if User.objects.filter(username=username).exists():
-                return Response(
-                    {"error": "User already exists"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"error": "User already exists"}, status=400)
 
             user = User.objects.create_user(username=username, password=password)
 
             # 🔥 AUTO LOGIN
             refresh = RefreshToken.for_user(user)
 
-            return Response(
-                {
-                    "message": "User created successfully",
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token)
-                },
-                status=status.HTTP_201_CREATED
-            )
+            return Response({
+                "message": "User created successfully",
+                "refresh": str(refresh),
+                "access": str(refresh.access_token)
+            }, status=201)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=400)
 
     except Exception as e:
         return Response({
@@ -65,24 +59,19 @@ class TaskListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
+        queryset = Task.objects.filter(user=self.request.user)
 
-        queryset = Task.objects.filter(user=user)
-
-        # Filter by completed
+        # Filter
         completed = self.request.query_params.get('completed')
         if completed is not None:
-            if completed.lower() == 'true':
-                queryset = queryset.filter(completed=True)
-            elif completed.lower() == 'false':
-                queryset = queryset.filter(completed=False)
+            queryset = queryset.filter(completed=(completed.lower() == 'true'))
 
-        # Search by title
+        # Search
         title = self.request.query_params.get('title')
         if title:
             queryset = queryset.filter(title__icontains=title)
 
-        # 🔥 NEW: ORDERING
+        # 🔥 ORDERING
         ordering = self.request.query_params.get('ordering')
         if ordering:
             queryset = queryset.order_by(ordering)
