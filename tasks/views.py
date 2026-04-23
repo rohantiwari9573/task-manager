@@ -10,9 +10,7 @@ from .serializers import TaskSerializer, RegisterSerializer
 from django.core.management import call_command
 
 @api_view(['GET'])
-def run_migrations(request):
-    call_command('migrate')
-    return Response({"message": "migrations done"})
+
 
 # =========================
 # USER REGISTRATION API
