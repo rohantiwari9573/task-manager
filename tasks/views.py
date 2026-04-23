@@ -9,7 +9,7 @@ from .models import Task
 from .serializers import TaskSerializer, RegisterSerializer
 from django.core.management import call_command
 
-@api_view(['GET'])
+
 
 
 # =========================
