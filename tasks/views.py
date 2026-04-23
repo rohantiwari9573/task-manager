@@ -6,12 +6,14 @@ from drf_yasg.utils import swagger_auto_schema
 from django.contrib.auth.models import User
 import traceback
 
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from .models import Task
 from .serializers import TaskSerializer, RegisterSerializer
 
 
 # =========================
-# USER REGISTRATION API
+# USER REGISTRATION API (AUTO LOGIN)
 # =========================
 @swagger_auto_schema(
     method='post',
@@ -32,10 +34,17 @@ def register_user(request):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            User.objects.create_user(username=username, password=password)
+            user = User.objects.create_user(username=username, password=password)
+
+            # 🔥 AUTO LOGIN
+            refresh = RefreshToken.for_user(user)
 
             return Response(
-                {"message": "User created successfully"},
+                {
+                    "message": "User created successfully",
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token)
+                },
                 status=status.HTTP_201_CREATED
             )
 
@@ -58,10 +67,6 @@ class TaskListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # 🔥 FIX: prevent AnonymousUser crash
-        if user.is_anonymous:
-            return Task.objects.none()
-
         queryset = Task.objects.filter(user=user)
 
         # Filter by completed
@@ -77,6 +82,11 @@ class TaskListCreateView(generics.ListCreateAPIView):
         if title:
             queryset = queryset.filter(title__icontains=title)
 
+        # 🔥 NEW: ORDERING
+        ordering = self.request.query_params.get('ordering')
+        if ordering:
+            queryset = queryset.order_by(ordering)
+
         return queryset
 
     def perform_create(self, serializer):
@@ -91,10 +101,4 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-
-        # 🔥 FIX: prevent AnonymousUser crash
-        if user.is_anonymous:
-            return Task.objects.none()
-
-        return Task.objects.filter(user=user)
+        return Task.objects.filter(user=self.request.user)
