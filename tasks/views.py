@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view
 from drf_yasg.utils import swagger_auto_schema
 from django.contrib.auth.models import User
+import traceback
 
 from .models import Task
 from .serializers import TaskSerializer, RegisterSerializer
@@ -18,20 +19,33 @@ from .serializers import TaskSerializer, RegisterSerializer
 )
 @api_view(['POST'])
 def register_user(request):
-    serializer = RegisterSerializer(data=request.data)
+    try:
+        serializer = RegisterSerializer(data=request.data)
 
-    if serializer.is_valid():
-        username = serializer.validated_data['username']
-        password = serializer.validated_data['password']
+        if serializer.is_valid():
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
 
-        if User.objects.filter(username=username).exists():
-            return Response({"error": "User already exists"}, status=400)
+            if User.objects.filter(username=username).exists():
+                return Response(
+                    {"error": "User already exists"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        User.objects.create_user(username=username, password=password)
+            User.objects.create_user(username=username, password=password)
 
-        return Response({"message": "User created successfully"}, status=201)
+            return Response(
+                {"message": "User created successfully"},
+                status=status.HTTP_201_CREATED
+            )
 
-    return Response(serializer.errors, status=400)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        return Response({
+            "error": str(e),
+            "trace": traceback.format_exc()
+        }, status=500)
 
 
 # =========================
@@ -44,7 +58,7 @@ class TaskListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # 🔥 FIX: handle anonymous user (prevents 500 error)
+        # 🔥 FIX: prevent AnonymousUser crash
         if user.is_anonymous:
             return Task.objects.none()
 
@@ -79,7 +93,7 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # 🔥 FIX: handle anonymous user
+        # 🔥 FIX: prevent AnonymousUser crash
         if user.is_anonymous:
             return Task.objects.none()
 
