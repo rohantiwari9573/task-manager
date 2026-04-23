@@ -7,9 +7,6 @@ from django.contrib.auth.models import User
 
 from .models import Task
 from .serializers import TaskSerializer, RegisterSerializer
-from django.core.management import call_command
-
-
 
 
 # =========================
@@ -45,9 +42,15 @@ class TaskListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Task.objects.filter(user=self.request.user)
+        user = self.request.user
 
-        # Filter by completed status
+        # 🔥 FIX: handle anonymous user (prevents 500 error)
+        if user.is_anonymous:
+            return Task.objects.none()
+
+        queryset = Task.objects.filter(user=user)
+
+        # Filter by completed
         completed = self.request.query_params.get('completed')
         if completed is not None:
             if completed.lower() == 'true':
@@ -74,4 +77,10 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Task.objects.filter(user=self.request.user)
+        user = self.request.user
+
+        # 🔥 FIX: handle anonymous user
+        if user.is_anonymous:
+            return Task.objects.none()
+
+        return Task.objects.filter(user=user)
