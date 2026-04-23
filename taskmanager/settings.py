@@ -5,7 +5,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
 SECRET_KEY = 'django-insecure-key'
-DEBUG = False
+
+# Automatically handle debug for local vs production
+DEBUG = not os.environ.get("RENDER")
 
 ALLOWED_HOSTS = [
     'task-manager-j13m.onrender.com',
@@ -60,13 +62,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'taskmanager.wsgi.application'
 
-# DATABASE (FIXED FOR RENDER)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': '/tmp/db.sqlite3',
+# DATABASE (ENV-SPECIFIC)
+if os.environ.get('RENDER'):
+    # Render (Linux environment)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': '/tmp/db.sqlite3',
+        }
     }
-}
+else:
+    # Local (Windows)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # REST FRAMEWORK
 REST_FRAMEWORK = {
